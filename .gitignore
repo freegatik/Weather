@@ -1,0 +1,59 @@
+# Xcode
+.DS_Store
+*/build/*
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+
+# CocoaPods
+Pods/
+*.xcworkspace
+!default.xcworkspace
+
+# Carthage
+Carthage/Build
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Code Injection
+iOSInjectionProject/
+
+# Конфиденциальные файлы
+*.p12
+*.mobileprovision
+*.cer
+*.key
+*.pem
+*.certSigningRequest
+*.entitlements
+Config.plist
+secrets.plist
+APIKeys.plist
+GoogleService-Info.plist
+Firebase.plist
+*.env
+.env
+.env.local
+.env.production
+.env.staging
+
+# Архивы и дистрибуция
+*.ipa
+*.dSYM.zip
+*.dSYM
+DerivedData/
+*.app
+*.xcarchive
