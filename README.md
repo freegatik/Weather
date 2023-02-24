@@ -43,6 +43,7 @@ Weather/
 └── Resources/           # Ресурсы приложения
     ├── Assets.xcassets
     └── Info.plist
+WeatherTests/             # Юнит-тесты (JSON, история поиска, сеть)
 ```
 
 ## 🛠️ Технологии
@@ -52,6 +53,7 @@ Weather/
 - **SDWebImage** 
 - **WeatherAPI** 
 - **UserDefaults** 
+- **XCTest** (таргет WeatherTests)
 
 ## 📋 Требования
 
@@ -79,7 +81,7 @@ Weather/
 
 4. **Выберите симулятор или устройство и запустите проект (⌘+R)**
 
-## 🔧 Настройка API
+5. **Юнит-тесты:** Product → Test в Xcode (таргет WeatherTests, схема Weather).
 
 Приложение использует WeatherAPI для получения данных о погоде. API ключ уже настроен в коде, но для продакшена рекомендуется:
 
