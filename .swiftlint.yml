@@ -1,0 +1,46 @@
+excluded:
+  - Pods
+  - DerivedData
+  - .build
+
+included:
+  - Weather
+  - WeatherTests
+  - WeatherUITests
+
+disabled_rules:
+  - trailing_comma
+  - nesting
+  - static_over_final_class
+
+line_length:
+  warning: 140
+  error: 220
+
+identifier_name:
+  allowed_symbols: "_"
+  validates_start_with_lowercase: false
+  min_length:
+    warning: 2
+    error: 1
+  excluded:
+    - id
+    - x
+    - y
+
+type_name:
+  min_length: 3
+
+function_body_length:
+  warning: 80
+  error: 120
+
+file_length:
+  warning: 400
+  error: 600
+
+cyclomatic_complexity:
+  warning: 15
+  error: 25
+
+analyzer_rules: []
