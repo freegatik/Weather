@@ -2,7 +2,7 @@
 //  CityModelTests.swift
 //  WeatherTests
 //
-//  Created by Anton Solovev on 22.02.2023.
+//  Created by Anton Solovev on 07.05.2026.
 //
 
 import XCTest
@@ -10,9 +10,8 @@ import XCTest
 
 final class CityModelTests: XCTestCase {
     func testDecodeCurrentWeatherJSON() throws {
-        let json = """
-        {"location":{"name":"Moscow","localtime":"2023-02-22 12:00"},"current":{"temp_c":-5.5,"condition":{"text":"Cloudy","icon":"//cdn.weatherapi.com/wx/64x64/day/119.png"}}}
-        """
+        // swiftlint:disable:next line_length
+        let json = "{\"location\":{\"name\":\"Moscow\",\"localtime\":\"2023-02-22 12:00\"},\"current\":{\"temp_c\":-5.5,\"condition\":{\"text\":\"Cloudy\",\"icon\":\"//cdn.weatherapi.com/wx/64x64/day/119.png\"}}}"
         let data = try XCTUnwrap(json.data(using: .utf8))
         let model = try JSONDecoder().decode(CityModel.self, from: data)
         XCTAssertEqual(model.location.name, "Moscow")
