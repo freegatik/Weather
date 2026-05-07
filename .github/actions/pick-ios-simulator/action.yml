@@ -1,0 +1,41 @@
+name: Pick iOS Simulator
+description: Pick first available iPhone 16 / 15 / 14 simulator UDID for xcodebuild -destination
+
+outputs:
+  udid:
+    description: Simulator UDID for platform=iOS Simulator,id=...
+    value: ${{ steps.pick.outputs.udid }}
+
+runs:
+  using: composite
+  steps:
+    - id: pick
+      shell: bash
+      run: |
+        OUTPUT="$(python3 <<'PY'
+        import json, subprocess, sys
+
+        raw = subprocess.check_output(
+            ["xcrun", "simctl", "list", "devices", "available", "--json"],
+            text=True,
+        )
+        data = json.loads(raw)
+        want = ("iPhone 16", "iPhone 15", "iPhone 14")
+        for runtime, devices in data.get("devices", {}).items():
+            if "iOS" not in runtime:
+                continue
+            for d in devices:
+                if d.get("isAvailable") is not True:
+                    continue
+                name = d.get("name") or ""
+                for w in want:
+                    if name.startswith(w):
+                        udid = d.get("udid")
+                        if udid:
+                            print(udid)
+                            raise SystemExit(0)
+        print("No suitable iPhone simulator", file=sys.stderr)
+        sys.exit(1)
+        PY
+        )"
+        echo "udid=$OUTPUT" >> "$GITHUB_OUTPUT"

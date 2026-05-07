@@ -1,0 +1,186 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DERIVED_DATA: ${{ github.workspace }}/DerivedData
+  RESULT_BUNDLE: ${{ github.workspace }}/TestResults.xcresult
+  MIN_APP_SWIFT_LINE_COVERAGE: "0.945"
+
+jobs:
+  swiftlint:
+    name: SwiftLint
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Lint
+        run: swiftlint lint --reporter github-actions-logging --strict
+
+  static-analysis:
+    name: Xcode Analyze
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: CocoaPods
+        run: pod install
+
+      - name: Pick iOS Simulator
+        id: sim
+        uses: ./.github/actions/pick-ios-simulator
+
+      - name: Analyze
+        run: |
+          set -eo pipefail
+          xcodebuild analyze \
+            -workspace Weather.xcworkspace \
+            -scheme Weather \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}"
+
+  test-and-coverage:
+    name: Tests & Swift coverage
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: CocoaPods
+        run: pod install
+
+      - name: Pick iOS Simulator
+        id: sim
+        uses: ./.github/actions/pick-ios-simulator
+
+      - name: Build and test (coverage + xcresult)
+        run: |
+          set -eo pipefail
+          rm -rf "$DERIVED_DATA" "$RESULT_BUNDLE"
+          xcodebuild \
+            -workspace Weather.xcworkspace \
+            -scheme Weather \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath "$DERIVED_DATA" \
+            -enableCodeCoverage YES \
+            -resultBundlePath "$RESULT_BUNDLE" \
+            test
+
+      - name: Merge LLVM profiles and enforce line coverage (Weather .o)
+        run: |
+          set -eo pipefail
+          PROFILE_ROOT="$DERIVED_DATA/Build/ProfileData"
+          SIM_DIR="$(find "$PROFILE_ROOT" -mindepth 1 -maxdepth 1 -type d | head -1)"
+          if [[ -z "$SIM_DIR" || ! -d "$SIM_DIR" ]]; then
+            echo "No ProfileData subdirectory under $PROFILE_ROOT" >&2
+            exit 1
+          fi
+
+          MERGED_PROFILE="$(mktemp /tmp/weather-profdata.XXXXXX)"
+          MERGE_FILES=()
+          shopt -s nullglob
+          for p in "$SIM_DIR"/*.profraw; do MERGE_FILES+=("$p"); done
+          shopt -u nullglob
+          if [[ ${#MERGE_FILES[@]} -eq 0 ]]; then
+            echo "No .profraw files under $SIM_DIR" >&2
+            exit 1
+          fi
+          xcrun llvm-profdata merge -sparse "${MERGE_FILES[@]}" -o "$MERGED_PROFILE"
+
+          BIN="$DERIVED_DATA/Build/Products/Debug-iphonesimulator/Weather.app/Weather"
+          NORM="$DERIVED_DATA/Build/Intermediates.noindex/Weather.build/Debug-iphonesimulator/Weather.build/Objects-normal"
+          OBJDIR="$(find "$NORM" -mindepth 1 -maxdepth 1 -type d | head -1)"
+          if [[ ! -d "$OBJDIR" ]]; then
+            echo "Missing Objects-normal under $NORM" >&2
+            exit 1
+          fi
+          ARCH="$(basename "$OBJDIR")"
+
+          OBJECT_ARGS=()
+          shopt -s nullglob
+          for o in "$OBJDIR"/*.o; do
+            OBJECT_ARGS+=(-object "$o")
+          done
+          shopt -u nullglob
+          if [[ ${#OBJECT_ARGS[@]} -eq 0 ]]; then
+            echo "No .o files in $OBJDIR" >&2
+            exit 1
+          fi
+
+          REPORT_TXT="$(mktemp /tmp/llvm-cov-report.XXXXXX)"
+          xcrun llvm-cov report "$BIN" \
+            -instr-profile="$MERGED_PROFILE" \
+            -arch="$ARCH" \
+            "${OBJECT_ARGS[@]}" \
+            --ignore-filename-regex='GeneratedAssetSymbols' \
+            | tee "$REPORT_TXT"
+
+          export REPORT_TXT
+          export MIN_APP_SWIFT_LINE_COVERAGE
+          python3 <<'PY'
+          import os
+          import sys
+
+          path = os.environ["REPORT_TXT"]
+          min_cov = float(os.environ["MIN_APP_SWIFT_LINE_COVERAGE"])
+          rows = open(path, encoding="utf-8").read().splitlines()
+          total_line = None
+          for line in reversed(rows):
+              stripped = line.strip()
+              if not stripped.startswith("TOTAL"):
+                  continue
+              percents = [p for p in stripped.split() if p.endswith("%")]
+              if not percents:
+                  print("TOTAL line has no percentages", file=sys.stderr)
+                  sys.exit(1)
+              total_line = float(percents[-1].rstrip("%")) / 100.0
+              break
+          if total_line is None:
+              print("Could not parse TOTAL line coverage from llvm-cov report", file=sys.stderr)
+              sys.exit(1)
+          print(f"TOTAL line coverage (Swift app objects, excl. GeneratedAssetSymbols): {total_line:.2%}")
+          if total_line + 1e-9 < min_cov:
+              print(f"Below minimum {min_cov:.2%}", file=sys.stderr)
+              sys.exit(1)
+          PY
+
+      - name: Upload xcresult bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestResults-xcresult
+          path: ${{ env.RESULT_BUNDLE }}
+          if-no-files-found: warn
