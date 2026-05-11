@@ -1,119 +1,74 @@
-# 🌤️ Weather App
+<p align="center">
+  <img src="docs/readme-weather-icon.png" width="200" alt="Weather">
+</p>
 
-Простое и элегантное iOS приложение для просмотра текущей погоды в различных городах мира.
+# Weather
 
-## 📱 Описание
+![Static Badge](https://img.shields.io/badge/platform-iOS-white)
+![Static Badge](https://img.shields.io/badge/latest_release-v1.0.0-green)
+![Static Badge](https://img.shields.io/badge/swift-v5.0-orange)
 
-Weather App - это нативное iOS приложение, написанное на Swift, которое позволяет пользователям:
-- Искать погоду в любом городе мира
-- Просматривать историю последних поисков
-- Получать актуальную информацию о температуре, условиях и времени
-- Видеть иконки погодных условий
+[![CI](https://github.com/freegatik/Weather/actions/workflows/ci.yml/badge.svg)](https://github.com/freegatik/Weather/actions/workflows/ci.yml)
 
-## ✨ Основные возможности
+Native **UIKit** app (Swift **5**, iOS **18.2** in the Xcode project; **CocoaPods** pins the pod platform to **18.4**) for city weather search, recent-search history (**`UserDefaults`** via **`LastSearchCitiesProvider`**), and condition icons loaded with **[SDWebImage](https://github.com/SDWebImage/SDWebImage)**. Data comes from **[WeatherAPI](https://www.weatherapi.com/)** through **`WeatherService`**. The UI is **Storyboard**-driven with **`MainViewController`** and custom **`CityTableCell`** (XIB). **MVVM**-style separation for the cell; **`UITestingSupport`** helps UI and unit tests.
 
-- 🔍 **Поиск по городам** - введите название города и получите актуальную погоду
-- 📍 **История поиска** - приложение запоминает последние поиски для быстрого доступа
-- 🌡️ **Детальная информация** - температура, описание погоды, местное время
-- 🖼️ **Визуальные элементы** - иконки погодных условий для лучшего восприятия
-- 💾 **Локальное хранение** - данные сохраняются между сессиями
+## CI
 
-## 🏗️ Архитектура
+Workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on [GitHub Actions](https://github.com/freegatik/Weather/actions) for **`push`**, **`pull_request`**, and **`workflow_dispatch`**. **`concurrency`** with **`cancel-in-progress`** avoids stacked runs per ref.
 
-Приложение построено с использованием архитектурных принципов:
+| Job | What it runs |
+|-----|----------------|
+| **SwiftLint** | **`macos-latest`**, Homebrew **SwiftLint**, **`swiftlint lint --strict`** with GitHub Actions reporter ([`.swiftlint.yml`](.swiftlint.yml)) |
+| **Xcode Analyze** | Restores **`Pods`** from cache → **`pod install`** → composite action **[`pick-ios-simulator`](.github/actions/pick-ios-simulator/action.yml)** (first available **iPhone 16 / 15 / 14**) → **`xcodebuild analyze`** on **`Weather.xcworkspace`** / **`Weather`** with **`platform=iOS Simulator,id=<UDID>`** |
+| **Tests & Swift coverage** | Same Pods + simulator pick → **`xcodebuild test`** with **`-derivedDataPath`**, **`-enableCodeCoverage YES`**, **`-resultBundlePath TestResults.xcresult`** → merges **`.profraw`**, runs **`llvm-cov report`** over **`Weather.app`** + **`Objects-normal/*.o`**, ignores **`GeneratedAssetSymbols`**, **enforces minimum line coverage `MIN_APP_SWIFT_LINE_COVERAGE` (94.5%)** → uploads **`TestResults.xcresult`** on **`always()`** |
 
-- **MVVM** - Model-View-ViewModel для разделения логики и представления
-- **Protocol-Oriented Programming** - использование протоколов для гибкости
-- **Dependency Injection** - внедрение зависимостей для тестируемости
+Simulator selection uses **UDID** (not `name=` + implicit **OS:latest**), matching the composite action output.
 
-## 📁 Структура проекта
+## Requirements
 
-```
-Weather/
-├── AppDelegate/           # Конфигурация приложения
-│   ├── AppDelegate.swift
-│   └── SceneDelegate.swift
-├── Services/             # Бизнес-логика и сервисы
-│   ├── WeatherService/   # Сервис для работы с API погоды
-│   ├── LastSearchCitiesProvider/ # Хранение истории поиска
-│   └── Model/           # Модели данных
-├── UI/                  # Пользовательский интерфейс
-│   ├── MainViewController.swift # Главный экран
-│   └── CityTableCell/   # Ячейка для отображения города
-└── Resources/           # Ресурсы приложения
-    ├── Assets.xcassets
-    └── Info.plist
-WeatherTests/             # Юнит-тесты (JSON, история поиска, сеть)
+- **Xcode 15+** with a current iOS Simulator (CI uses **`macos-latest`** default Xcode)
+- **CocoaPods** (`gem install cocoapods` or Homebrew)
+- **iOS 18.2+** deployment (project); **Podfile** platform **18.4**
+
+## Getting started
+
+```bash
+git clone https://github.com/freegatik/Weather.git
+cd Weather
+pod install
+open Weather.xcworkspace
 ```
 
-## 🛠️ Технологии
+Use the **Weather** scheme: **⌘R** to run, **⌘U** for tests. Replace the WeatherAPI key in **`Weather/Services/WeatherService/WeatherService.swift`** for production (see comments in project).
 
-- **Swift** 
-- **UIKit** 
-- **SDWebImage** 
-- **WeatherAPI** 
-- **UserDefaults** 
-- **XCTest** (таргет WeatherTests)
+## Project layout
 
-## 📋 Требования
+| Area | Path / notes |
+|------|----------------|
+| Lifecycle | `Weather/AppDelegate/` |
+| UI | `Weather/UI/` (`MainViewController`, `CityTableCell/`, `Base.lproj/Main.storyboard`) |
+| Services | `Weather/Services/` (`WeatherService`, `LastSearchCitiesProvider`, `Model/`) |
+| Test hooks | `Weather/App/UITestingSupport.swift` |
+| Resources | `Weather/Resources/` (`Assets.xcassets`, plists, launch storyboard) |
+| Unit & UI tests | `WeatherTests/`, `WeatherUITests/` |
+| Dependencies | [`Podfile`](Podfile), [`Podfile.lock`](Podfile.lock) |
 
-- iOS 18.4+
-- Xcode 15.0+
-- Swift 5.0+
+## Testing
 
-## 🚀 Установка и запуск
+CI runs the full **`Weather`** test action (unit + UI) with coverage gates. Locally:
 
-1. **Клонируйте репозиторий:**
-   ```bash
-   git clone <repository-url>
-   cd Weather
-   ```
+```bash
+pod install
+xcodebuild test \
+  -workspace Weather.xcworkspace \
+  -scheme Weather \
+  -destination 'platform=iOS Simulator,name=iPhone 16'
+```
 
-2. **Установите зависимости:**
-   ```bash
-   pod install
-   ```
+Pick a simulator name that exists on your Mac (`xcrun simctl list devices available`).
 
-3. **Откройте проект:**
-   ```bash
-   open Weather.xcworkspace
-   ```
+Lint:
 
-4. **Выберите симулятор или устройство и запустите проект (⌘+R)**
-
-5. **Юнит-тесты:** Product → Test в Xcode (таргет WeatherTests, схема Weather).
-
-Приложение использует WeatherAPI для получения данных о погоде. API ключ уже настроен в коде, но для продакшена рекомендуется:
-
-1. Создать аккаунт на [WeatherAPI.com](https://www.weatherapi.com/)
-2. Получить собственный API ключ
-3. Заменить ключ в файле `WeatherService.swift`
-
-## 📱 Использование
-
-1. **Поиск города:** Введите название города в поисковую строку и нажмите "Search"
-2. **Просмотр истории:** При запуске приложения автоматически загружаются последние поиски
-3. **Обновление данных:** Потяните вниз для обновления информации
-
-## 🎨 Особенности дизайна
-
-- Минималистичный и интуитивный интерфейс
-- Адаптивная верстка для различных размеров экранов
-- Плавные анимации и переходы
-- Поддержка темной темы iOS
-
-## 🔒 Безопасность
-
-- API ключ хранится в коде (для демонстрации)
-- Все сетевые запросы выполняются через HTTPS
-- Валидация пользовательского ввода
-
-## 🐛 Ограничения
-
-- Поддерживается только поиск по названию города
-- Нет поддержки геолокации
-- Ограниченное количество городов в истории (зависит от UserDefaults)
-
----
-
-**Создано для изучения iOS разработки**
+```bash
+swiftlint lint --strict
+```
