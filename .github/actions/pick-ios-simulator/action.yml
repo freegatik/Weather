@@ -13,7 +13,7 @@ runs:
       shell: bash
       run: |
         OUTPUT="$(python3 <<'PY'
-        import json, subprocess, sys
+        import json, re, subprocess, sys
 
         raw = subprocess.check_output(
             ["xcrun", "simctl", "list", "devices", "available", "--json"],
@@ -21,7 +21,20 @@ runs:
         )
         data = json.loads(raw)
         want = ("iPhone 16", "iPhone 15", "iPhone 14")
-        for runtime, devices in data.get("devices", {}).items():
+
+        def ios_runtime_sort_key(runtime_id: str) -> tuple[int, int]:
+            m = re.search(r"iOS-(\d+)-(\d+)", runtime_id)
+            if m:
+                return (int(m.group(1)), int(m.group(2)))
+            return (0, 0)
+
+        runtimes = sorted(
+            data.get("devices", {}).items(),
+            key=lambda kv: ios_runtime_sort_key(kv[0]),
+            reverse=True,
+        )
+
+        for runtime, devices in runtimes:
             if "iOS" not in runtime:
                 continue
             for d in devices:

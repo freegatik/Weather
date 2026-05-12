@@ -18,15 +18,16 @@ final class WeatherUITests: XCTestCase {
         app.launch()
 
         let searchField = app.searchFields["Добавить новый город"]
-        XCTAssertTrue(searchField.waitForExistence(timeout: 5))
+        XCTAssertTrue(searchField.waitForExistence(timeout: 15))
         searchField.tap()
-        searchField.typeText("Oslo\n")
+        searchField.typeText("Oslo")
+        searchField.typeText(XCUIKeyboardKey.return.rawValue)
 
         let tables = app.tables
-        XCTAssertTrue(tables.firstMatch.waitForExistence(timeout: 2))
+        XCTAssertTrue(tables.firstMatch.waitForExistence(timeout: 15))
 
         let cell = tables.cells.element(boundBy: 0)
-        XCTAssertTrue(cell.waitForExistence(timeout: 5))
+        XCTAssertTrue(cell.waitForExistence(timeout: 30))
         XCTAssertTrue(cell.staticTexts["Oslo"].exists)
     }
 

@@ -97,6 +97,7 @@ jobs:
             -derivedDataPath "$DERIVED_DATA" \
             -enableCodeCoverage YES \
             -resultBundlePath "$RESULT_BUNDLE" \
+            -maximum-parallel-testing-workers 1 \
             test
 
       - name: Merge LLVM profiles and enforce line coverage (Weather .o)
