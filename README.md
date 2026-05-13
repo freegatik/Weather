@@ -72,3 +72,7 @@ Lint:
 ```bash
 swiftlint lint --strict
 ```
+
+## License
+
+The project is distributed under the [MIT License](LICENSE). The canonical legal text is in the `LICENSE` file at the repository root.
